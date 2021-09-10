@@ -73,15 +73,6 @@ def get_mt_and_mti(p: memory.ProcessMemory, mt_addr: int) -> MtData:
     return MtData(mt_els=mt_elems, mti=mti)
 
 
-class MemoryWorker(Thread):
-    def __init__(self, bus, *args, **kwargs):
-        super(*args, **kwargs)
-        self._bus = bus
-
-    def run(self):
-        return memory_worker(self._bus)
-
-
 def memory_worker(bus: Queue, stop_event: Event):
     """
     This thread will periodically probe the FFXII memory to
