@@ -10,6 +10,9 @@ import (
 
 const WildcardByte = 0x00
 
+// Pattern is a parsed memory signature. Replaces wildcard bytes (represented
+// as "?" or "??" in-memory) with null byte character and is represented as a
+// true value in the Mask slice.
 type Pattern struct {
 	Bytes []byte
 	Mask  []bool
@@ -41,6 +44,7 @@ func ParseSignature(s string) (Pattern, error) {
 	return Pattern{b, m}, nil
 }
 
+// Returns true if the pattern matches at the given offset in buf.
 func (p *Pattern) MatchAt(buf []byte, off int) bool {
 	if off+len(p.Bytes) > len(buf) {
 		return false
@@ -58,6 +62,8 @@ func (p *Pattern) MatchAt(buf []byte, off int) bool {
 	return true
 }
 
+// Scans the buf and returns the idx of the first matching pattern. If none are
+// found, returns -1.
 func (p Pattern) Find(buf []byte) int {
 	for i := 0; i+len(p.Bytes) <= len(buf); i++ {
 		if p.MatchAt(buf, i) {
@@ -83,6 +89,10 @@ func (pa Pattern) String() string {
 
 type Read4 func(addr uint64) (uint32, error)
 
+// Computes absolute memory address of the RNG index
+// i.e. mov eax, [rip + 0x1234]
+// Read4 is a function which reads 4 bytes from memory. In our case,
+// ReadUint32 from memscan.
 func CalcMtIdxAddress(sigStart uint64, read4 Read4) (uint64, error) {
 	imm, err := read4(sigStart + 2)
 	if err != nil {

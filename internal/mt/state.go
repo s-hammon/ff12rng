@@ -7,11 +7,13 @@ import (
 	"github.com/s-hammon/ff12rng/internal/util"
 )
 
+// Represents a complete in-memory RNG state and current index
 type Snapshot struct {
 	State [n]uint32
 	MtIdx int
 }
 
+// TODO: support for PS2 emulating processes (possibly Big Endianness)
 func ReadSnapshot(mem *os.File, mtIdxAddr uint64) (Snapshot, error) {
 	base := mtIdxAddr - uint64(n*4)
 	raw, err := util.ReadBytes(mem, base, (n+1)*4)

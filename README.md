@@ -39,8 +39,6 @@ TODO: build releases
 
 ### Go
 
-TODO: make sure this works
-
 `go install github.com/s-hammon/ff12rng/cmd/ff12rng@latest`
 
 ~~Note that you must run the tool as root since it needs permission to

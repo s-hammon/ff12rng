@@ -3,115 +3,13 @@ package memscan
 import (
 	"bufio"
 	"encoding/binary"
-	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/s-hammon/ff12rng/internal/sig"
 	"github.com/s-hammon/p"
 )
-
-// Memory Map Region
-type Region struct {
-	Start, End uint64
-	Perms      string
-}
-
-type ProcessMemory struct {
-	pid     int
-	mem     *os.File
-	regions []Region
-}
-
-func NewProcessMemory(pid int) *ProcessMemory {
-	return &ProcessMemory{pid: pid}
-}
-
-func (pm *ProcessMemory) Open() error {
-	mem, err := OpenMem(pm.pid)
-	if err != nil {
-		return err
-	}
-
-	pm.mem = mem
-	return nil
-}
-
-func (pm *ProcessMemory) Close() error {
-	if pm.mem == nil {
-		return errors.New("trying to close nil file")
-	}
-	return pm.mem.Close()
-}
-
-func (pm *ProcessMemory) Regions() []Region {
-	if len(pm.regions) == 0 {
-		regions, err := ReadMaps(pm.pid)
-		if err != nil {
-			panic(err)
-		}
-
-		pm.regions = regions
-	}
-
-	out := make([]Region, len(pm.regions))
-	copy(out, pm.regions)
-	return out
-}
-
-func (pm *ProcessMemory) FindSignature(s string) *uint64 {
-	pat, err := sig.ParseSignature(s)
-	if err != nil {
-		return nil
-	}
-
-	for _, region := range pm.Regions() {
-		if !strings.Contains(region.Perms, "r") {
-			continue
-		}
-
-		size := int(region.End - region.Start)
-		buf := make([]byte, size)
-		if _, err := pm.mem.ReadAt(buf, int64(region.Start)); err != nil {
-			continue
-		}
-
-		if off := pat.Find(buf); off != -1 {
-			addr := region.Start + uint64(off)
-			return &addr
-		}
-	}
-
-	return nil
-}
-
-func (pm *ProcessMemory) ReadMemory(addr uint64, count int) ([]byte, error) {
-	if pm.mem == nil {
-		return nil, errors.New("memory not open")
-	}
-	if _, err := pm.mem.Seek(int64(addr), io.SeekStart); err != nil {
-		return nil, fmt.Errorf("read 0x%x (%d): %v", addr, count, err)
-	}
-
-	buf := make([]byte, count)
-	if _, err := io.ReadFull(pm.mem, buf); err != nil {
-		return nil, fmt.Errorf("read 0x%x (%d): %v", addr, count, err)
-	}
-
-	return buf, nil
-}
-
-func (pm *ProcessMemory) ReadUint32(addr uint64) (uint32, error) {
-	b, err := pm.ReadMemory(addr, 4)
-	if err != nil {
-		return 0, err
-	}
-
-	return binary.LittleEndian.Uint32(b), nil
-}
 
 func FindPidBySubstring(substr string) (int, error) {
 	ents, err := os.ReadDir("/proc")
@@ -143,6 +41,13 @@ func FindPidBySubstring(substr string) (int, error) {
 	return 0, fmt.Errorf("process containing %s not found", substr)
 }
 
+// Memory-mapped region from "/proc/{pid}/maps"
+type Region struct {
+	Start, End uint64
+	Perms      string
+}
+
+// Read the mem map of a given PID and returns the list of Regions
 func ReadMaps(pid int) ([]Region, error) {
 	f, err := os.Open(p.Format("/proc/%d/maps", pid))
 	if err != nil {
