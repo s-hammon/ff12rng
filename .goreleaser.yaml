@@ -1,0 +1,16 @@
+version: 2
+project_name: ff12rng
+
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - binary: ff12rng
+    main: ./cmd/ff12rng
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - "-s -w -X main.version=v{{ .Version }}"
