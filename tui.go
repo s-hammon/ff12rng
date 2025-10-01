@@ -49,11 +49,14 @@ func ParsePattern(s string) ([]Threshold, error) {
 
 func MatchSequence(vals []int, pattern []Threshold) map[int]struct{} {
 	hits := make(map[int]struct{})
-	if len(pattern) == 0 {
+	patternLen := len(pattern)
+
+	if patternLen == 0 {
 		return hits
 	}
 
-	for i := 0; i+len(pattern) <= len(vals); i++ {
+	limit := len(vals) - patternLen
+	for i := range limit {
 		ok := true
 		for j, th := range pattern {
 			if th.EqualOrGreater {
@@ -98,7 +101,6 @@ func RunTUI(updates <-chan Update, rows, cols int) error {
 	if err != nil {
 		return fmt.Errorf("tcell.NewScreen: %v", err)
 	}
-
 	if err := s.Init(); err != nil {
 		return fmt.Errorf("screen.Init: %v", err)
 	}
